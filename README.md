@@ -1,0 +1,1 @@
+A robust car rental system offering seamless car rental services. Features secure user authentication, real-time vehicle availability, integrated payment gateway, and a comprehensive admin dashboard for managing bookings and fleet. Designed for scalability and ease of use.
