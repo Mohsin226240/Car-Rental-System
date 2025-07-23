@@ -1,5 +1,14 @@
+from PyQt6.QtWidgets import (
+    QApplication, QWidget, QTabWidget, QVBoxLayout, QHBoxLayout, QLabel, 
+    QLineEdit, QPushButton, QComboBox, QMessageBox, QTableWidget, QTableWidgetItem,
+    QHeaderView
+)
+from PyQt6.QtCore import Qt, QDate
+from PyQt6.QtGui import QFont
+import sys
 from datetime import datetime
-# Car class
+
+# === Core Classes ===
 class Car:
     def __init__(self, car_id, brand, model, car_type, rental_rate):
         self.car_id = car_id
@@ -15,13 +24,13 @@ class Car:
     def return_car(self):
         self.available = True
 
-# Customer class
+
 class Customer:
     def __init__(self, customer_id, name):
         self.customer_id = customer_id
         self.name = name
-        self.rentals = [] 
-        self.rental_history = []  
+        self.rentals = []
+        self.rental_history = []
 
     def rent_car(self, rental):
         self.rentals.append(rental)
@@ -31,7 +40,7 @@ class Customer:
         if rental in self.rentals:
             self.rentals.remove(rental)
 
-# Rental class
+
 class Rental:
     def __init__(self, rental_id, car, customer, start_date, end_date):
         self.rental_id = rental_id
@@ -41,149 +50,308 @@ class Rental:
         self.end_date = end_date
 
     def calculate_cost(self):
-        rental_days = (self.end_date - self.start_date).days
-        return rental_days * self.car.rental_rate
+        days = (self.end_date - self.start_date).days
+        return days * self.car.rental_rate
 
-# RentalSystem class
-class RentalSystem:
+
+# === Main Window ===
+class CarRentalApp(QWidget):
     def __init__(self):
-        self.cars = []
-        self.customers = []
+        super().__init__()
+        self.setWindowTitle("🚗 Car Rental System - PyQt6")
+        self.setGeometry(300, 100, 900, 650)
+
+        self.customers = {}
         self.rentals = []
+        self.rental_counter = 1
+        self.cars = self.create_cars()
 
-    def add_car(self, car):
-        self.cars.append(car)
+        self.initUI()
 
-    def add_customer(self, customer):
-        self.customers.append(customer)
+    def create_cars(self):
+        car_data = [
+            ("C001", "Toyota", "Corolla", "Sedan", 5000),
+            ("C002", "Toyota", "Land Cruiser", "SUV", 12000),
+            ("C003", "Honda", "Civic", "Sedan", 5500),
+            ("C004", "BMW", "X5", "Luxury SUV", 15000),
+            ("C005", "Suzuki", "Cultus", "Hatchback", 3500),
+            ("C006", "Kia", "Sportage", "SUV", 11000),
+            ("C007", "Mercedes", "E-Class", "Luxury Sedan", 18000),
+            ("C008", "Hyundai", "Tucson", "SUV", 9500),
+            ("C009", "Ford", "Focus", "Hatchback", 4000),
+            ("C010", "Audi", "A6", "Luxury Sedan", 17000),
+            ("C011", "Jeep", "Wrangler", "SUV", 13000),
+            ("C012", "Range Rover", "Evoque", "Luxury SUV", 20000),
+            ("C013", "Nissan", "X-Trail", "SUV", 9000),
+            ("C014", "Lexus", "RX", "Luxury SUV", 19000),
+            ("C015", "Hyundai", "Elantra", "Sedan", 4800),
+            ("C016", "BMW", "M5", "Sports Sedan", 22000),
+            ("C017", "Ford", "Mustang", "Sports Coupe", 25000),
+            ("C018", "Audi", "Q7", "SUV", 16000),
+            ("C019", "Kia", "Sorento", "SUV", 10500),
+            ("C020", "Suzuki", "Alto", "Hatchback", 3000),
+            ("C021", "Mercedes", "C-Class", "Luxury Sedan", 16500),
+            ("C022", "Toyota", "Camry", "Sedan", 5800),
+            ("C023", "Nissan", "Patrol", "SUV", 14000),
+            ("C024", "Honda", "Accord", "Sedan", 6000),
+            ("C025", "BMW", "M8", "Luxury Coupe", 26000),
+        ]
+        return [Car(*c) for c in car_data]
 
-    def show_available_cars_by_type(self, car_type):
-        available_cars = [car for car in self.cars if car.available and car.car_type.lower() == car_type.lower()]
-        if available_cars:
-            print(f"\nAvailable {car_type} Cars:")
-            for car in available_cars:
-                print(f"{car.car_id}: {car.brand} {car.model} - ${car.rental_rate}/day")
-        else:
-            print("No available cars of this type.")
+    def initUI(self):
+        layout = QVBoxLayout()
 
-    def book_car(self, customer, car_id, start_date, end_date):
-        car = next((car for car in self.cars if car.car_id == car_id and car.available), None)
-        if car:
-            rental_id = f"R{len(self.rentals) + 1}"
-            rental = Rental(rental_id, car, customer, start_date, end_date)
-            self.rentals.append(rental)
-            car.rent()
-            customer.rent_car(rental)
-            print(f"\nCar '{car.model}' booked successfully!✅")
-            print(f"Your Rental ID is: {rental_id}")
-            print("Thank you for booking with us!\n")
-            return rental_id
-        else:
-            print("\nInvalid or unavailable Car ID. Please try again.")
-            return None
+        self.tabs = QTabWidget()
+        layout.addWidget(self.tabs)
 
-    def return_car(self, rental_id):
-        rental = next((rental for rental in self.rentals if rental.rental_id == rental_id), None)
-        if rental:
-            rental.car.return_car()
-            rental.customer.return_car(rental)
-            cost = rental.calculate_cost()
-            print(f"\nCar returned successfully✅. Total cost: ${cost}")
-            return True
-        else:
-            print("Invalid Rental ID. Please enter a valid ID.")
-            return False
+        self.tab_rent = QWidget()
+        self.tab_return = QWidget()
+        self.tab_history = QWidget()
 
-    def view_rental_history(self, customer):
-        if customer.rental_history:
-            print(f"\nRental History for {customer.name}:")
-            for rental in customer.rental_history:
-                cost = rental.calculate_cost()
-                print(f"Rental ID: {rental.rental_id} | Car: {rental.car.brand} {rental.car.model} | "
-                      f"From: {rental.start_date.date()} To: {rental.end_date.date()} | Cost: ${cost}")
-        else:
-            print(f"\nNo rental history found for {customer.name}.")
+        self.tabs.addTab(self.tab_rent, "🚘 Rent a Car")
+        self.tabs.addTab(self.tab_return, "🔁 Return a Car")
+        self.tabs.addTab(self.tab_history, "📋 Rental History")
 
-# ------------------------ MAIN PROGRAM -----------------------------
+        self.setup_rent_tab()
+        self.setup_return_tab()
+        self.setup_history_tab()
+
+        self.setLayout(layout)
+
+    def setup_rent_tab(self):
+        layout = QVBoxLayout()
+
+        font_label = QFont("Arial", 13)
+        font_input = QFont("Arial", 12)
+
+        # Customer Name
+        hbox_name = QHBoxLayout()
+        label_name = QLabel("Customer Name:")
+        label_name.setFont(font_label)
+        hbox_name.addWidget(label_name)
+
+        self.input_name = QLineEdit()
+        self.input_name.setFont(font_input)
+        self.input_name.setPlaceholderText("Enter full name")
+        self.input_name.setFixedHeight(35)
+        hbox_name.addWidget(self.input_name)
+        layout.addLayout(hbox_name)
+
+        # Car Selection
+        hbox_car = QHBoxLayout()
+        label_car = QLabel("Select Car:")
+        label_car.setFont(font_label)
+        hbox_car.addWidget(label_car)
+
+        self.combo_car = QComboBox()
+        self.combo_car.setFont(font_input)
+        self.combo_car.setFixedHeight(35)
+        hbox_car.addWidget(self.combo_car)
+        layout.addLayout(hbox_car)
+
+        # Start Date
+        hbox_start = QHBoxLayout()
+        label_start = QLabel("Start Date (YYYY-MM-DD):")
+        label_start.setFont(font_label)
+        hbox_start.addWidget(label_start)
+
+        self.input_start = QLineEdit()
+        self.input_start.setFont(font_input)
+        self.input_start.setPlaceholderText("YYYY-MM-DD")
+        self.input_start.setFixedHeight(35)
+        hbox_start.addWidget(self.input_start)
+        layout.addLayout(hbox_start)
+
+        # End Date
+        hbox_end = QHBoxLayout()
+        label_end = QLabel("End Date (YYYY-MM-DD):")
+        label_end.setFont(font_label)
+        hbox_end.addWidget(label_end)
+
+        self.input_end = QLineEdit()
+        self.input_end.setFont(font_input)
+        self.input_end.setPlaceholderText("YYYY-MM-DD")
+        self.input_end.setFixedHeight(35)
+        hbox_end.addWidget(self.input_end)
+        layout.addLayout(hbox_end)
+
+        # Rent Button
+        self.btn_rent = QPushButton("Book Now")
+        self.btn_rent.setFont(QFont("Arial", 14, weight=QFont.Weight.Bold))
+        self.btn_rent.setFixedHeight(45)
+        self.btn_rent.setStyleSheet("""
+            QPushButton {
+                background-color: #28a745; 
+                color: white; 
+                border-radius: 8px;
+            }
+            QPushButton:hover {
+                background-color: #218838;
+            }
+        """)
+        self.btn_rent.clicked.connect(self.handle_rent)
+        layout.addWidget(self.btn_rent)
+
+        self.tab_rent.setLayout(layout)
+        self.refresh_car_list()
+
+    def setup_return_tab(self):
+        layout = QVBoxLayout()
+
+        font_label = QFont("Arial", 13)
+        font_input = QFont("Arial", 12)
+
+        # Rental ID Input
+        hbox_rental_id = QHBoxLayout()
+        label_rental_id = QLabel("Rental ID:")
+        label_rental_id.setFont(font_label)
+        hbox_rental_id.addWidget(label_rental_id)
+
+        self.input_rental_id = QLineEdit()
+        self.input_rental_id.setFont(font_input)
+        self.input_rental_id.setFixedHeight(35)
+        hbox_rental_id.addWidget(self.input_rental_id)
+
+        layout.addLayout(hbox_rental_id)
+
+        # Return Button
+        self.btn_return = QPushButton("Return Car")
+        self.btn_return.setFont(QFont("Arial", 14, weight=QFont.Weight.Bold))
+        self.btn_return.setFixedHeight(45)
+        self.btn_return.setStyleSheet("""
+            QPushButton {
+                background-color: #ffc107; 
+                color: black; 
+                border-radius: 8px;
+            }
+            QPushButton:hover {
+                background-color: #e0a800;
+            }
+        """)
+        self.btn_return.clicked.connect(self.handle_return)
+        layout.addWidget(self.btn_return)
+
+        self.tab_return.setLayout(layout)
+
+    def setup_history_tab(self):
+        layout = QVBoxLayout()
+
+        self.table_history = QTableWidget()
+        self.table_history.setColumnCount(6)
+        self.table_history.setHorizontalHeaderLabels(["Rental ID", "Customer", "Car", "Start Date", "End Date", "Cost (Rs)"])
+        self.table_history.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.table_history.verticalHeader().setVisible(False)
+        self.table_history.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.table_history.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self.table_history.setFont(QFont("Arial", 11))
+        layout.addWidget(self.table_history)
+
+        self.tab_history.setLayout(layout)
+
+        self.refresh_history()
+
+    def refresh_car_list(self):
+        self.combo_car.clear()
+        for car in self.cars:
+            if car.available:
+                display = f"{car.brand} {car.model} - {car.car_type} (Rs {car.rental_rate}/day)"
+                self.combo_car.addItem(display)
+
+    def refresh_history(self):
+        self.table_history.setRowCount(0)
+        for rental in self.rentals:
+            row_pos = self.table_history.rowCount()
+            self.table_history.insertRow(row_pos)
+            self.table_history.setItem(row_pos, 0, QTableWidgetItem(rental.rental_id))
+            self.table_history.setItem(row_pos, 1, QTableWidgetItem(rental.customer.name))
+            self.table_history.setItem(row_pos, 2, QTableWidgetItem(f"{rental.car.brand} {rental.car.model}"))
+            self.table_history.setItem(row_pos, 3, QTableWidgetItem(rental.start_date.strftime("%Y-%m-%d")))
+            self.table_history.setItem(row_pos, 4, QTableWidgetItem(rental.end_date.strftime("%Y-%m-%d")))
+            self.table_history.setItem(row_pos, 5, QTableWidgetItem(str(rental.calculate_cost())))
+
+    def handle_rent(self):
+        name = self.input_name.text().strip()
+        car_text = self.combo_car.currentText()
+        start_str = self.input_start.text().strip()
+        end_str = self.input_end.text().strip()
+
+        if not name or not car_text or not start_str or not end_str:
+            QMessageBox.warning(self, "Missing Info", "Please fill all fields.")
+            return
+
+        try:
+            start_date = datetime.strptime(start_str, "%Y-%m-%d")
+            end_date = datetime.strptime(end_str, "%Y-%m-%d")
+            if end_date <= start_date:
+                raise ValueError("End date must be after start date")
+        except Exception as e:
+            QMessageBox.warning(self, "Invalid Date", "Please enter valid dates in YYYY-MM-DD format.\n" + str(e))
+            return
+
+        # Find the selected car
+        selected_car = None
+        for car in self.cars:
+            display = f"{car.brand} {car.model} - {car.car_type} (Rs {car.rental_rate}/day)"
+            if display == car_text and car.available:
+                selected_car = car
+                break
+
+        if not selected_car:
+            QMessageBox.warning(self, "Unavailable", "Selected car is not available.")
+            self.refresh_car_list()
+            return
+
+        # Check or add customer
+        customer = self.customers.get(name)
+        if not customer:
+            customer = Customer(f"CU{len(self.customers)+1:03d}", name)
+            self.customers[name] = customer
+
+        # Rent car
+        selected_car.rent()
+        rental_id = f"R{self.rental_counter:03d}"
+        self.rental_counter += 1
+
+        rental = Rental(rental_id, selected_car, customer, start_date, end_date)
+        customer.rent_car(rental)
+        self.rentals.append(rental)
+
+        QMessageBox.information(self, "Success", f"Car booked!\nRental ID: {rental_id}\nCost: Rs {rental.calculate_cost()}")
+
+        self.clear_rent_fields()
+        self.refresh_car_list()
+        self.refresh_history()
+
+    def clear_rent_fields(self):
+        self.input_name.clear()
+        self.input_start.clear()
+        self.input_end.clear()
+        self.combo_car.setCurrentIndex(-1)
+
+    def handle_return(self):
+        rental_id = self.input_rental_id.text().strip()
+        if not rental_id:
+            QMessageBox.warning(self, "Input Required", "Please enter Rental ID.")
+            return
+
+        rental = next((r for r in self.rentals if r.rental_id == rental_id), None)
+        if not rental:
+            QMessageBox.warning(self, "Not Found", "Rental ID not found.")
+            return
+
+        # Return car
+        rental.car.return_car()
+        rental.customer.return_car(rental)
+
+        QMessageBox.information(self, "Returned", f"Car {rental.car.brand} {rental.car.model} returned.\nTotal cost: Rs {rental.calculate_cost()}")
+
+        self.input_rental_id.clear()
+        self.refresh_car_list()
+        self.refresh_history()
+
 
 if __name__ == "__main__":
-    system = RentalSystem()
-
-    # Add sample cars
-    cars_data = [
-        ("C1", "Toyota", "Corolla","Economy", 45 ),
-        ("C2", "Toyota", "Camry","Economy", 40 ),
-        ("C3", "Honda", "Civic","Economy", 45 ),
-        ("C4", "BMW", "M5","Luxury", 100 ),
-        ("C5", "Mercedes", "C-Class","Luxury", 105 ),
-        ("C6", "Honda", "City","Economy", 38 ),
-        ("C7", "BMW", "X5", "SUV", 45 ),
-        ("C8", "BMW", "M8","Luxury", 120 ),
-        ("C9", "Audi", "A6","Luxury", 110 ),
-        ("C10", "Audi", "Q7","SUV", 90 ),
-        ("C11", "Kia", "Sportage","SUV", 75 ),
-        ("C12", "Ford", "Focus","Economy", 45 ),
-        ("C13", "Hyundai", "Santro","Economy", 35 ),
-        ("C14", "Hyundai", "Elantra","Economy", 60 ),
-        ("C15", "Toyota", "Land Cruiser V8","SUV", 110 ),
-        ("C16", "Suzuki", "Cultus","Economy", 38 ),
-    ]
-    for data in cars_data:
-        system.add_car(Car(*data))
-    # Welcome Customers
-    print("Welcome to Smart Car🚗 Rental System")
-    # Register customer
-    name = input("Enter your name: ")
-    customer_id = len(system.customers) + 1
-    customer = Customer(customer_id, name)
-    system.add_customer(customer)
-
-    print(f"\nWelcome {name}!")
-
-    # Asking for car type and show available cars
-    while True:
-        car_type = input("Which type of car do you want to rent? (Economy / Luxury / SUV): ").strip()
-        if car_type.lower() in ['economy', 'luxury', 'suv']:
-            system.show_available_cars_by_type(car_type)
-            break
-        else:
-            print("Invalid type. Please choose from Economy, Luxury, or SUV.")
-    while True:
-     car_id = input("\nEnter Car ID to rent: ").strip()
-    # Checking if Car ID is valid and available
-     valid_car = next((car for car in system.cars if car.car_id == car_id and car.available), None)
-
-     if not valid_car:
-        print("Invalid Car ID or Car not available. Please try again.")
-        continue 
-
-     start_date_str = input("Enter start date (YYYY-MM-DD): ").strip()
-     end_date_str = input("Enter end date (YYYY-MM-DD): ").strip()
-
-     try:
-        start_date = datetime.strptime(start_date_str, "%Y-%m-%d")
-        end_date = datetime.strptime(end_date_str, "%Y-%m-%d")
-     except ValueError:
-        print("Invalid date format. Please use YYYY-MM-DD.")
-        continue
-     rental_id = system.book_car(customer, car_id, start_date, end_date)
-     if rental_id:
-        break
-    want_to_return = input("\nDo you want to return the car now? (yes/no): ").strip().lower()
-
-    if want_to_return == "yes":
-     while True:
-        rental_input = input("Enter your Rental ID to return the car: ").strip()
-        rental = next((rental for rental in system.rentals if rental.rental_id == rental_input), None)
-        if rental:
-            if system.return_car(rental_input):
-                break
-        else:
-            print("Invalid Rental ID. Please enter a valid ID.")
-    else:
-     print("\nOkay, you can return the car later.")
-    show_history = input("\nWould you like to view your rental history? (yes/no): ").strip().lower()
-    if show_history == "yes":
-        system.view_rental_history(customer)
-    else:
-        print("\nThank you for using our car rental service. Goodbye!")
+    app = QApplication(sys.argv)
+    window = CarRentalApp()
+    window.show()
+    sys.exit(app.exec())
